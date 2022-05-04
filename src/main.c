@@ -23,7 +23,7 @@ int main(){
 
     //printf("\n");
     int i;
-    for(i=0;i<1000;i++){
+    for(i=0;i<300;i++){
         //st = clock();
         two = simulation_step(one);
         print_board(two);

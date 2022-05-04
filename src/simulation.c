@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void clrscr()
+{
+    system("clear");
+}
+
 struct Board initialize_board(int rows, int cols){
     struct Board b;
 
@@ -42,7 +47,9 @@ struct Board create_life(struct Board b, unsigned int quantity){
 }
 void print_board(struct Board b){
     int i,j;
-
+  
+    //printf("\e[1;1H\e[2J");
+    clrscr();
     for(i=0; i<b.rows; i++){
         for(j=0; j<b.cols; j++){
             if(b.board[i*b.cols+j].alive){
@@ -119,7 +126,7 @@ struct Cell kill_cell(struct Cell c){
     die = die >> 11;
     // Ver si toca morir
     unsigned int a = rand() % 128;
-    if(die > a)
+    if(die > a || die == 0)
         // Poner alive a 0
         c.alive = 0;
     
