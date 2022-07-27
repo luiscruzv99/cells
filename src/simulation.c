@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void clrscr()
-{
+void clrscr(){
     system("clear");
 }
 
