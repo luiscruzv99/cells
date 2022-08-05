@@ -1,7 +1,7 @@
 all: compile run
 
 compile:
-	gcc -o cells src/main.c
+	gcc -O3 -o cells src/main.c -lm
 
 run:
 	./cells
