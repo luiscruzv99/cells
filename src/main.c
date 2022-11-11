@@ -10,31 +10,31 @@ int main() {
   struct Board one;
   struct Board two;
 
-  int tam = 1000;
+  int tam = 10;
 
   // Get the terminal size to adapt the board
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
   clock_t st = clock();
-  one = initialize_board(w.ws_row - 1, w.ws_col - 1);
-  two = initialize_board(w.ws_row - 1, w.ws_col - 1);
+  //one = initialize_board(w.ws_row - 1, w.ws_col - 1);
+  //two = initialize_board(w.ws_row - 1, w.ws_col - 1);
 
-  // one = initialize_board(tam, tam);
-  // two = initialize_board(tam, tam);
+  one = initialize_board(tam, tam*4);
+  two = initialize_board(tam, tam*4);
 
   clock_t init = clock() - st;
 
   st = clock();
-  one = create_life(one, 200);
+  one = create_life(one, 20);
   clock_t pop = clock() - st;
 
   int i;
   st = clock();
-  for (i = 0; i < 100; i++) {
+  for (i = 0; i < 1000; i++) {
     simulation_step(one, two);
     print_board(two);
-    usleep(50000);
+    usleep(5000);
     simulation_step(two, one);
   }
 

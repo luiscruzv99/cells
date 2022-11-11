@@ -51,8 +51,6 @@ struct Board create_life(struct Board b, unsigned int quantity)
 
   int hotspots[lim * 2];
 
-  #pragma omp parallel shared(hotspots, lim, b) private(k)
-  #pragma omp for
   for (k = 0; k < lim; k++)
   {
     hotspots[k * 2] = rand() % b.rows;
@@ -61,8 +59,6 @@ struct Board create_life(struct Board b, unsigned int quantity)
 
   max = 0.0;
 
-  #pragma omp parallel shared(max, hotspots, lim, b, mins) private(i, j, k, min, dist)
-  #pragma omp for
   for (i = 0; i < b.rows; i++)
   {
     for (j = 0; j < b.cols; j++)
@@ -83,7 +79,6 @@ struct Board create_life(struct Board b, unsigned int quantity)
     }
   }
 
-  //#pragma omp parallel shared(b, mins, max) private(i)
   for(i=0; i < b.rows*b.cols; i++){
     b.board[i].foodCode =  (int) ceil((mins[i] / max) * 7.0);
     b.board[i].foodQuantity = rand() % 16;
@@ -104,7 +99,6 @@ struct Board create_life(struct Board b, unsigned int quantity)
 
     if (!b.board[pos].alive)
     {
-
       // Esto debería funcionar
       char *base = (char *)b.board[pos].life;
       int *g = (int *)base + 0;
@@ -119,14 +113,6 @@ struct Board create_life(struct Board b, unsigned int quantity)
     else
       tries--;
   } while (quantity > 0 && tries > 0);
-
-  //   for(i=0; i<b.rows; i++){
-  //   for(j=0; j<b.cols; j++)
-  //     printf("[%d]", b.board[i*b.cols+j].foodCode);
-  //   printf("\n");
-  // }
-  // printf("\n");
-
 
   return b;
 }
@@ -145,16 +131,13 @@ void print_board(struct Board b)
       struct Cell c = b.board[i * b.cols + j];
       if (c.alive)
       {
-        
         unsigned int shape = c.life->shape;
-        printf( "%s%s%c%s", colors[c.life->color], bg_colors[c.foodCode], shapes[shape], colors[7]);
-        
+        printf( "%s%s%c%s", colors[c.life->color], bg_colors[c.life->acceptFood], shapes[shape], colors[7]);
       }
       else
       {
-        printf("%s %s",bg_colors[b.board[i * b.cols + j].foodCode], bg_colors[7]);
+        printf(" ");
       }
-      // printf("[%d]", c.foodCode);
     }
     printf("\n");
   }
@@ -190,9 +173,30 @@ struct Cell grow_cell(struct Board from, int i, int j)
 
   if (!from.board[pos].alive)
   {
+    c = from.board[pos]; //Esto memcpy
+    
+    int u, v;
     // Elegimos vecino
     //  Si vivo y se puede reproducir, reproducir
     //  Sino escoger otro vecino
+    for (u=-1; u<2; u++){
+      for(v=-1; v<2; v++){
+        int tmp = (i+u) * from.cols + (j+v);
+        
+        if(from.board[tmp].alive){
+          if(c.life == NULL) c.life = from.board[tmp].life;
+          else if(from.board[tmp].life->maxEnergy > c.life->maxEnergy){
+            //int a = rand() % 16;
+            //if(from.board[tmp].life->reproduction > a){
+              c.life = from.board[tmp].life;
+            //}
+          }
+        }
+      }
+      
+    }
+  }else{
+    return from.board[pos];
   }
   return c;
 }
@@ -206,11 +210,9 @@ struct Cell kill_cell(struct Cell c)
     if( c.life->energy > 1)
       c.alive = 0;
 
-    // printf("Muerto");
-
-    // int foodType = c.life->acceptFood;
-    // c.foodCode = (foodType + c.foodCode) / 2;
-    // c.foodQuantity += c.life->maxEnergy;
+    int foodType = c.life->acceptFood;
+    c.foodCode = (foodType + c.foodCode) / 2;
+    c.foodQuantity += c.life->maxEnergy;
   }
 
   return c;
@@ -235,10 +237,7 @@ void simulation_step(struct Board from, struct Board to)
 
   int i, j, pos;
 
-
-  #pragma omp parallel private(i,j,pos) shared(from, to)
-  #pragma omp for
-  for (i = 0; i < from.rows; i++)
+  for (i = 0; i < from.rows; i++){
     for (j = 0; j < from.cols; j++)
     {
 
@@ -253,9 +252,8 @@ void simulation_step(struct Board from, struct Board to)
       else
       {
         to.board[pos] = from.board[pos];
-        // to.board[pos] = grow_cell(from, i, j);
+        to.board[pos] = grow_cell(from, i, j);
       }
     }
-
-  // return to;
+  }    
 }
