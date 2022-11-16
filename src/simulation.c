@@ -2,30 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 void clrscr() { system("clear"); }
 
 void initialize()
-{
-
-  // To initially generate the
-  // table algorithmically
-  BitsSetTable256[0] = 0;
-
-  for (int i = 0; i < 256; i++)
-  {
-    BitsSetTable256[i] = (i & 1) +
-                         BitsSetTable256[i / 2];
-  }
-}
-
-int countSetBits(int n)
-{
-  return (BitsSetTable256[n & 0xff] +
-          BitsSetTable256[(n >> 8) & 0xff] +
-          BitsSetTable256[(n >> 16) & 0xff] +
-          BitsSetTable256[n >> 24]);
-}
+{}
 
 struct Board initialize_board(int rows, int cols)
 {
@@ -43,7 +25,7 @@ struct Board create_life(struct Board b, unsigned int quantity)
 
   int i, j, k, lim;
 
-  float mins[b.rows*b.cols];
+  float mins[b.rows * b.cols];
 
   float min, max, dist;
 
@@ -73,14 +55,16 @@ struct Board create_life(struct Board b, unsigned int quantity)
           min = dist;
       }
 
-      if(min > max) max = min;
-      
-      mins[i*b.cols+j] = min;
+      if (min > max)
+        max = min;
+
+      mins[i * b.cols + j] = min;
     }
   }
 
-  for(i=0; i < b.rows*b.cols; i++){
-    b.board[i].foodCode =  (int) ceil((mins[i] / max) * 7.0);
+  for (i = 0; i < b.rows * b.cols; i++)
+  {
+    b.board[i].foodCode = (int)ceil((mins[i] / max) * 7.0);
     b.board[i].foodQuantity = rand() % 16;
     b.board[i].alive = 0;
     b.board[i].life = malloc(sizeof(struct Bacteria));
@@ -132,7 +116,7 @@ void print_board(struct Board b)
       if (c.alive)
       {
         unsigned int shape = c.life->shape;
-        printf( "%s%s%c%s", colors[c.life->color], bg_colors[c.life->acceptFood], shapes[shape], colors[7]);
+        printf("%s%s%c%s", colors[c.life->color],bg_colors[c.life->acceptFood], shapes[shape],colors[7]);
       }
       else
       {
@@ -143,13 +127,13 @@ void print_board(struct Board b)
   }
 }
 
-struct Cell mutate_cell(struct Cell c)
+void mutate_cell(struct Cell *c)
 {
-  struct Bacteria *b = c.life;
+  struct Bacteria *b = c->life;
 
-  int prob = rand() % 512;
+  int prob = rand() % 4096;
 
-  if (prob < b->mutation)
+  if (b->mutation > prob)
   {
     int mut = rand() % 6 + 2;
     int offset = rand() % 26;
@@ -165,71 +149,67 @@ struct Cell mutate_cell(struct Cell c)
   }
 }
 
-struct Cell grow_cell(struct Board from, int i, int j)
+void grow_cell(struct Board from, struct Cell *into, int i, int j)
 {
-  struct Cell c;
 
   int pos = i * from.cols + j;
 
-  if (!from.board[pos].alive)
-  {
-    c = from.board[pos]; //Esto memcpy
-    
-    int u, v;
-    // Elegimos vecino
-    //  Si vivo y se puede reproducir, reproducir
-    //  Sino escoger otro vecino
-    for (u=-1; u<2; u++){
-      for(v=-1; v<2; v++){
-        int tmp = (i+u) * from.cols + (j+v);
-        
-        if(from.board[tmp].alive){
-          if(c.life == NULL) c.life = from.board[tmp].life;
-          else if(from.board[tmp].life->maxEnergy > c.life->maxEnergy){
-            //int a = rand() % 16;
-            //if(from.board[tmp].life->reproduction > a){
-              c.life = from.board[tmp].life;
-            //}
+  memcpy(into, &from.board[pos], sizeof(struct Cell));
+  into->life->energy = 0;
+
+  // Mirar sus vecinos (N,S,E,W)
+  int u, v;
+
+  for (u = -1; u < 2; u++)
+    if ((i + u) > 0 && (i + u) < from.rows)
+      for (v = -1; v < 2; v++)
+        if ((j + v) > 0 && (j + v) < from.cols)
+        {
+          int tmp = (i + u) * from.cols + (j + v);
+          // Escoger el que tenga mas energia
+          if (into->life->energy < from.board[tmp].life->energy)
+          {
+            int rep = rand() % 512;
+            if (from.board[tmp].life->reproduction > rep && from.board[tmp].foodQuantity > 0)
+            {
+              memcpy(into->life, from.board[tmp].life, sizeof(struct Bacteria));
+              into->alive = 1;
+              from.board->life->energy -= from.board->life->reproduction;
+              into->life->energy -= into->life->reproduction;
+            }
           }
         }
-      }
-      
-    }
-  }else{
-    return from.board[pos];
-  }
-  return c;
 }
 
-struct Cell kill_cell(struct Cell c)
+void kill_cell(struct Cell *from, struct Cell *into)
 {
   int prob = rand() % 256;
 
-  if (prob < c.life->death){
-    c.life->energy--;
-    if( c.life->energy > 1)
-      c.alive = 0;
+  if (from->life->death+1 > prob)
+  {
+    from->life->energy--;
+    if (from->life->energy > 1)
+      from->alive = 0;
 
-    int foodType = c.life->acceptFood;
-    c.foodCode = (foodType + c.foodCode) / 2;
-    c.foodQuantity += c.life->maxEnergy;
+    int foodType = from->life->acceptFood;
+    from->foodCode = (foodType + from->foodCode) / 2;
+    //from->foodQuantity ++;
   }
 
-  return c;
+  memcpy(into, from, sizeof(struct Cell));
 }
 
-struct Cell eat_cell(struct Cell c)
+void eat_cell(struct Cell *from, struct Cell *into)
 {
 
-  int food = c.foodCode & c.life->acceptFood;
+  int food = from->foodCode & from->life->acceptFood;
 
-  if (food > 0 && c.foodQuantity > 0)
+  if (food > 0 && from->foodQuantity > 0)
   {
-    c.foodQuantity--;
-    c.life->energy += countSetBits(food);
+    from->foodQuantity = 0;
+    from->life->energy++;
   }
-
-  return c;
+  memcpy(into, from, sizeof(struct Cell));
 }
 
 void simulation_step(struct Board from, struct Board to)
@@ -237,7 +217,8 @@ void simulation_step(struct Board from, struct Board to)
 
   int i, j, pos;
 
-  for (i = 0; i < from.rows; i++){
+  for (i = 0; i < from.rows; i++)
+  {
     for (j = 0; j < from.cols; j++)
     {
 
@@ -245,15 +226,12 @@ void simulation_step(struct Board from, struct Board to)
 
       if (from.board[pos].alive)
       {
-        to.board[pos] = mutate_cell(from.board[pos]);
-        to.board[pos] = eat_cell(from.board[pos]);
-        to.board[pos] = kill_cell(from.board[pos]);
+        mutate_cell(&from.board[pos]);
+        eat_cell(&from.board[pos], &to.board[pos]);
+        kill_cell(&from.board[pos], &to.board[pos]);
       }
       else
-      {
-        to.board[pos] = from.board[pos];
-        to.board[pos] = grow_cell(from, i, j);
-      }
+        grow_cell(from, &to.board[pos], i, j);
     }
-  }    
+  }
 }

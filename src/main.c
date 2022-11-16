@@ -6,35 +6,37 @@
 
 int main() {
 
-  //srand(time(NULL));
+  srand(time(NULL));
   struct Board one;
   struct Board two;
 
-  int tam = 10;
+  int tam = 500;
 
   // Get the terminal size to adapt the board
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
+
   clock_t st = clock();
   //one = initialize_board(w.ws_row - 1, w.ws_col - 1);
   //two = initialize_board(w.ws_row - 1, w.ws_col - 1);
 
-  one = initialize_board(tam, tam*4);
-  two = initialize_board(tam, tam*4);
+
+  one = initialize_board(tam, tam*2);
+  two = initialize_board(tam, tam*2);
 
   clock_t init = clock() - st;
 
   st = clock();
-  one = create_life(one, 20);
+  one = create_life(one, 100000);
   clock_t pop = clock() - st;
 
   int i;
   st = clock();
-  for (i = 0; i < 1000; i++) {
+  for (i = 0; i < 1; i++) {
     simulation_step(one, two);
     print_board(two);
-    usleep(5000);
+    usleep(10000);
     simulation_step(two, one);
   }
 
